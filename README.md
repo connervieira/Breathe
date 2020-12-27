@@ -5,6 +5,9 @@ Breathe is a simple, clean, and modern app for guided breathing
 ## Description
 Taking deep breaths is one of the simplest and easiest ways to reduce stress and clear your mind. However, sometimes it gets overlooked when it can help the most. Thats where Breathe comes in. Breathe is an extremely simple, barebones app to help you clear your mind. When you open Breathe, you're presented with just a button to start a breathing excercise. From there, you'll be walked through a short and simple breathing excerise to help clear your mind.
 
+## Usage
+To learn more about how to use Breathe, see USAGE.md
+
 ## Features
 ### Modern
 Breathe is made with GTK, which means it will adopt the modern design of your desktop environment, or any themes you have installed.

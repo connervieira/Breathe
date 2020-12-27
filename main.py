@@ -1,7 +1,7 @@
 # Breathe
 # V0LT
 # Licensed under the GPLv3
-# Version 0.9 
+# Version 1.0 
 
 import gi
 import threading
@@ -17,7 +17,7 @@ class Main(Gtk.ApplicationWindow): # This is the class for the main application 
         Gtk.Window.__init__(self, title="Breathe", application=app) # This sets the title of the window, and links it to the main application instance.
         self.set_default_size(200, 38)
 
-        def StartBreathing(self): # This function is called to open the berathing exercise window. 
+        def StartBreathing(self): # This function is called to open the breathing exercise window. 
             breathing_window = Breathing()
 
         self.start_button = Gtk.Button(label="Start") # Create start button.
@@ -52,7 +52,13 @@ class Breathing(Gtk.ApplicationWindow):
         def StartBreathing(): # Called when the guided breathing starts.
             self.timeout_id = GLib.timeout_add(5, self.Animation, None)
 
+        def StopBreathing(): # Called to stop the breathing exercise.
+            GLib.source_remove(self.timeout_id) # Stop the breathing progress bar animation started by StartBreathing()
+            self.breathing_direction.set_markup("<span font_desc='Lato Light 40'>%s</span>" % "Good job!") # Display "Good job" message
+            self.breathing_bar.set_fraction(0) # Set progress bar to 0. 
+
         threading.Timer(6.0, StartBreathing).start() # Start the breathing exercises 6 seconds after the window has opened, giving the user time to read the instructions.
+        threading.Timer(66.0, StopBreathing).start() # Stop breathing exercises after 66 seconds (60 seconds of breathing plus the 6 second timer above).
 
     def Animation(self, user_data):
         current_value = self.breathing_bar.get_fraction() # Define current_value as the current progress of the progress bar (0.0 through 1.0)
