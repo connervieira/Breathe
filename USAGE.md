@@ -59,3 +59,22 @@ Ubuntu: `sudo apt install alacarte`
 7. Click the blank icon to the left of the 'Launcher Properties' window, and select 'icon.png' from the Breathe folder.
 
 8. Check the 'Launch In Terminal' box.
+
+
+## Configuring HealthBox Integration
+
+If you'd like to have Breathe automatically submit information about the time you spend focusing on your Breathing to HealthBox, you'll need to configure it by following these steps.
+
+1. Start HealthBox, and select `Manage API keys` on the main menu.
+2. Create a new API key for Breathe using the following command: `c Breathe`
+    - It should be noted that the name of the key doesn't necessarily have to be Breathe. You can set it to anything you want.
+3. Notice that a new API key has appeared at the top of the interface. Take note of it's number.
+4. Edit the API key based on it's number using the following command. The number may be different for your API key. `e 1`
+5. Set the API key type to `source` using the following command: `t s`
+6. From now on, we'll be working on Breathe, but HealthBox should remain open, so Breathe can communicate with it. Open `main.py` in Breathe.
+7. At the top of `main.py`, notice the `Configuration` section.
+8. Change `use_healthbox` to `True`
+9. Change `healthbox_server` to the server address and port of your HealthBox instance, in the form of `host:port`. For example, if HealthBox is running locally on your machine on the default port, you might enter `localhost:5050`. If you run HealthBox over LAN, you may enter something along the lines of `192.168.0.28:5050`
+10. Change `healthbox_apikey` to the API key we created in HealthBox in the earlier steps.
+11. Save `main.py`
+12. Breathe should now automatically interface with HealthBox. You can test to see if everything works by completing a breathing exercise, then checking the database using the `Import or export database` function built into HealthBox. If you encounter issues, try checking the console window of Breathe to see if any errors appear that could lead you to the cause of the problem.
