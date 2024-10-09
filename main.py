@@ -3,27 +3,8 @@
 # Licensed under the GPLv3
 # Version 3.0 
 
-
-# ----- Configuration -----
-
-# This determines whether the time you spend focusing on breathing will be submitted to HealthBox as "mindful minutes". If this is enabled, then the following HealthBox configuration values must also be set.
-config = {
-    "healthbox": {
-        "enabled": True,
-        "endpoint": "https://v0lttech.com/healthbox/submit.php",
-        "service_key": "15f0b9dbb9de6770ae0c3cb4"
-    },
-    "exercise": {
-        "time": 60,
-        "speed": 1
-    }
-}
-
-# ----- End Of Configuration -----
-
-
-
 # Import required Python modules
+import os
 import threading
 import gi
 gi.require_version('Gtk', '3.0')
@@ -32,6 +13,35 @@ import sys
 import time
 import requests
 import json
+
+
+default_config = {
+    "healthbox": {
+        "enabled": False,
+        "endpoint": "https://v0lttech.com/healthbox/submit.php",
+        "service_key": ""
+    },
+    "exercise": {
+        "time": 60,
+        "speed": 1
+    }
+}
+
+config_file = os.path.join(os.path.expanduser("~"), ".config/V0LTBreathe/config.json")
+config_directory = os.path.dirname(config_file) # Get the directory of the configuration file.
+if (os.path.isdir(config_directory) == False): # Check to see if the configuration directory does not yet exist.
+    os.makedirs(config_directory)
+    print("Initialized configuration directory at '" + str(config_directory) + "'")
+if (os.path.isfile(config_file) == False): # Check to see if the configuration file does not yet exist.
+    with open(config_file, 'w', encoding='utf-8') as f:
+        json.dump(default_config, f, ensure_ascii=False, indent=4)
+    print("Initialized configuration file at '" + str(config_file) + "'")
+
+if (os.path.isfile(config_file) == True): # Check to make sure the config file exists.
+    with open(config_file) as f:
+        config = json.load(f)
+
+temp_config = config # temp_config holds the configuration temporarily during editing.
 
 
 class Main(Gtk.ApplicationWindow): # This is the class for the main application window. This is the first window shown when launching the application. 
@@ -57,7 +67,23 @@ class Main(Gtk.ApplicationWindow): # This is the class for the main application 
         self.show_all() # Show all elements on the interface
 
 class Configuration(Gtk.ApplicationWindow):
+    def CheckToggled_HealthBoxEnabled(self, switch, data):
+        temp_config["healthbox"]["enabled"] = switch.get_active()
+    def EntryChanged_HealthBoxEndpoint(self, entry):
+        temp_config["healthbox"]["endpoint"] = entry.get_text()
+    def EntryChanged_HealthBoxService(self, entry):
+        temp_config["healthbox"]["service_key"] = entry.get_text()
+    def SliderChanged_ExerciseTime(self, slider):
+        temp_config["exercise"]["time"] = float(slider.get_value())
+    def SliderChanged_ExerciseSpeed(self, slider):
+        temp_config["exercise"]["speed"] = float(slider.get_value())
     def __init__(self):
+        def SubmitConfiguration(self):
+            # TODO: Validate input.
+            with open(config_file, 'w', encoding='utf-8') as f:
+                json.dump(temp_config, f, ensure_ascii=False, indent=4)
+            print("Saved configuration")
+
         # Create window
         Gtk.Window.__init__(self, title="Configuration") # Set window title
         self.set_default_size(400, 200)
@@ -74,7 +100,7 @@ class Configuration(Gtk.ApplicationWindow):
         hbox.pack_start(self.label_healthbox_enabled, True, True, 0)
         self.input_healthbox_enabled = Gtk.Switch()
         self.input_healthbox_enabled.set_active(config["healthbox"]["enabled"])
-        self.input_healthbox_enabled.halign = Gtk.Align.CENTER
+        self.input_healthbox_enabled.connect("state-set", self.CheckToggled_HealthBoxEnabled)
         hbox.pack_start(self.input_healthbox_enabled, True, True, 0)
         vbox.pack_start(hbox, True, True, 0)
 
@@ -84,6 +110,7 @@ class Configuration(Gtk.ApplicationWindow):
         hbox.pack_start(self.label_healthbox_endpoint, True, True, 0)
         self.input_healthbox_endpoint = Gtk.Entry()
         self.input_healthbox_endpoint.set_text(config["healthbox"]["endpoint"])
+        self.input_healthbox_endpoint.connect('changed', self.EntryChanged_HealthBoxEndpoint)
         hbox.pack_start(self.input_healthbox_endpoint, True, True, 0)
         vbox.pack_start(hbox, True, True, 0)
 
@@ -93,9 +120,9 @@ class Configuration(Gtk.ApplicationWindow):
         hbox.pack_start(self.label_healthbox_service, True, True, 0)
         self.input_healthbox_service = Gtk.Entry()
         self.input_healthbox_service.set_text(config["healthbox"]["service_key"])
+        self.input_healthbox_service.connect('changed', self.EntryChanged_HealthBoxService)
         hbox.pack_start(self.input_healthbox_service, True, True, 0)
         vbox.pack_start(hbox, True, True, 0)
-
 
         separator = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
         vbox.pack_start(separator, True, True, 0)
@@ -104,7 +131,10 @@ class Configuration(Gtk.ApplicationWindow):
         self.label_exercise_time = Gtk.Label()
         self.label_exercise_time.set_text("Exercise Time: ")
         hbox.pack_start(self.label_exercise_time, True, True, 0)
-        # TODO: Add slider
+        self.input_exercise_time = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 10, 300, 1)
+        self.input_exercise_time.set_value(config["exercise"]["time"])
+        self.input_exercise_time.connect('value-changed', self.SliderChanged_ExerciseTime)
+        hbox.pack_start(self.input_exercise_time, True, True, 0)
         vbox.pack_start(hbox, True, True, 0)
 
         hbox = Gtk.Box(spacing=6)
@@ -112,11 +142,21 @@ class Configuration(Gtk.ApplicationWindow):
         self.label_exercise_speed.set_text("Exercise Speed: ")
         hbox.pack_start(self.label_exercise_speed, True, True, 0)
         self.input_exercise_speed = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0.2, 4, 0.1)
-        # TODO: Set value
+        self.input_exercise_speed.set_value(config["exercise"]["speed"])
+        self.input_exercise_speed.connect('value-changed', self.SliderChanged_ExerciseSpeed)
         hbox.pack_start(self.input_exercise_speed, True, True, 0)
         vbox.pack_start(hbox, True, True, 0)
 
+        separator = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
+        vbox.pack_start(separator, True, True, 0)
+
+        self.submit_button = Gtk.Button(label="Submit")
+        self.submit_button.connect("clicked", SubmitConfiguration)
+        vbox.pack_start(self.submit_button, True, True, 0)
+
+
         self.show_all() # Show all elements on the interface.
+
 
 
 class Breathing(Gtk.ApplicationWindow):
