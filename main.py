@@ -1,84 +1,122 @@
 # Breathe
-# V0LT
+# Conner Vieira - V0LT
 # Licensed under the GPLv3
-# Version 2.0 
+# Version 3.0 
 
 
 # ----- Configuration -----
 
-# Defines whether or not you'd like to submit the time you spend breathing to HealthBox as 'Mindful Minutes' (Metric B6). If this setting is changed, you'll need to configure your HealthBox instance information below.
-use_healthbox = False
-
-# Defines the host address and port that you host HealthBox on. If you're running HealthBox locally on it's default port, it will be 'localhost:5050'
-healthbox_server = "localhost:5050"
-
-# This is the API key that Breathe will use to communicate with HealthBox. This key needs to have 'source' permissions, and be allowed to access metric B6 (Mindful Minutes)
-healthbox_apikey = ""
-
-# This variable determines whether or not the URL will be printed when making the network request to HealthBox. This is extremely useful for debugging, but can be messy during normal usage. This should be left as 'False' if you aren't a developer.
-url_debugging = False
+# This determines whether the time you spend focusing on breathing will be submitted to HealthBox as "mindful minutes". If this is enabled, then the following HealthBox configuration values must also be set.
+config = {
+    "healthbox": {
+        "enabled": True,
+        "endpoint": "https://v0lttech.com/healthbox/submit.php",
+        "service_key": "15f0b9dbb9de6770ae0c3cb4"
+    },
+    "exercise": {
+        "time": 60,
+        "speed": 1
+    }
+}
 
 # ----- End Of Configuration -----
 
 
 
 # Import required Python modules
-import gi
 import threading
+import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, GLib
-from gi.repository import Gdk
-from gi.repository import Gio
 import sys
-import random
-from datetime import datetime
-import traceback
-import urllib.parse
-
-
-# Attempt to import the 'requests' module
-try:
-    import requests
-except ModuleNotFoundError as error:
-    if traceback.format_exception_only (ModuleNotFoundError, error) != ["ModuleNotFoundError: No module named 'requests'\n"]: # Make sure the error we're catching is the right one
-        raise # If not, raise the error
-    raise utils.MissingLibraryError ("making web server requests", "requests")
-
-
-
-# Define the function required to make network requests to HealthBox
-class APICallError (Exception): pass # This will be used when returning errors.
-
-def make_request (*, server, api_key, submission = None, print_url = False):
-    endpoint = "metrics/b6/submit".split ('/') # Define the method and metric that this request will use on HealthBox.
-    url = f"http://{server}/api/source/{'/'.join (endpoint)}?api_key={urllib.parse.quote (api_key)}" # Form the URL that will be used to communicate with HealthBox
-    if submission is not None:
-        url += f"&submission={urllib.parse.quote (submission)}" # Attach the JSON submission data to the URL formed above.
-    if print_url: print (f"Making a request to {url}")
-    response = requests.get (url) # Send the network request.
-    response_data = response.json () # Save the response of the network request to the response_data variable.
-    if not response_data ["success"]: # If something goes wrong, return an error.
-        raise APICallError (response_data ["error"])
-    del response_data ["success"]
-    del response_data ["error"]
-    return response_data
-
-
+import time
+import requests
+import json
 
 
 class Main(Gtk.ApplicationWindow): # This is the class for the main application window. This is the first window shown when launching the application. 
     def __init__(self, app):
         Gtk.Window.__init__(self, title="Breathe", application=app) # This sets the title of the window, and links it to the main application instance.
-        self.set_default_size(200, 38)
+        self.set_default_size(200, 38*2)
 
         def StartBreathing(self): # This function is called to open the breathing exercise window. 
             breathing_window = Breathing()
+        def EnterConfiguration(self): # This function is called to open the breathing exercise window. 
+            configuration_window = Configuration()
+
+        vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=1)
+        self.add(vbox)
 
         self.start_button = Gtk.Button(label="Start") # Create start button.
         self.start_button.connect("clicked", StartBreathing) # Link start button to StartBreathing function.
-        self.add(self.start_button) # Add the start button to the interface.
+        vbox.pack_start(self.start_button, True, True, 0)
+        self.configure_button = Gtk.Button(label="Configure") # Create configure button.
+        self.configure_button.connect("clicked", EnterConfiguration) # Link start button to StartBreathing function.
+        vbox.pack_start(self.configure_button, True, True, 0)
         
         self.show_all() # Show all elements on the interface
+
+class Configuration(Gtk.ApplicationWindow):
+    def __init__(self):
+        # Create window
+        Gtk.Window.__init__(self, title="Configuration") # Set window title
+        self.set_default_size(400, 200)
+        self.set_resizable(False)
+        self.show() # Show window.
+
+        vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        self.add(vbox)
+
+
+        hbox = Gtk.Box(spacing=6)
+        self.label_healthbox_enabled = Gtk.Label()
+        self.label_healthbox_enabled.set_text("HealthBox Enabled: ")
+        hbox.pack_start(self.label_healthbox_enabled, True, True, 0)
+        self.input_healthbox_enabled = Gtk.Switch()
+        self.input_healthbox_enabled.set_active(config["healthbox"]["enabled"])
+        self.input_healthbox_enabled.halign = Gtk.Align.CENTER
+        hbox.pack_start(self.input_healthbox_enabled, True, True, 0)
+        vbox.pack_start(hbox, True, True, 0)
+
+        hbox = Gtk.Box(spacing=6)
+        self.label_healthbox_endpoint = Gtk.Label()
+        self.label_healthbox_endpoint.set_text("HealthBox Endpoint: ")
+        hbox.pack_start(self.label_healthbox_endpoint, True, True, 0)
+        self.input_healthbox_endpoint = Gtk.Entry()
+        self.input_healthbox_endpoint.set_text(config["healthbox"]["endpoint"])
+        hbox.pack_start(self.input_healthbox_endpoint, True, True, 0)
+        vbox.pack_start(hbox, True, True, 0)
+
+        hbox = Gtk.Box(spacing=6)
+        self.label_healthbox_service = Gtk.Label()
+        self.label_healthbox_service.set_text("HealthBox Service: ")
+        hbox.pack_start(self.label_healthbox_service, True, True, 0)
+        self.input_healthbox_service = Gtk.Entry()
+        self.input_healthbox_service.set_text(config["healthbox"]["service_key"])
+        hbox.pack_start(self.input_healthbox_service, True, True, 0)
+        vbox.pack_start(hbox, True, True, 0)
+
+
+        separator = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
+        vbox.pack_start(separator, True, True, 0)
+
+        hbox = Gtk.Box(spacing=6)
+        self.label_exercise_time = Gtk.Label()
+        self.label_exercise_time.set_text("Exercise Time: ")
+        hbox.pack_start(self.label_exercise_time, True, True, 0)
+        # TODO: Add slider
+        vbox.pack_start(hbox, True, True, 0)
+
+        hbox = Gtk.Box(spacing=6)
+        self.label_exercise_speed = Gtk.Label()
+        self.label_exercise_speed.set_text("Exercise Speed: ")
+        hbox.pack_start(self.label_exercise_speed, True, True, 0)
+        self.input_exercise_speed = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0.2, 4, 0.1)
+        # TODO: Set value
+        hbox.pack_start(self.input_exercise_speed, True, True, 0)
+        vbox.pack_start(hbox, True, True, 0)
+
+        self.show_all() # Show all elements on the interface.
 
 
 class Breathing(Gtk.ApplicationWindow):
@@ -87,6 +125,7 @@ class Breathing(Gtk.ApplicationWindow):
         Gtk.Window.__init__(self, title="Breathe") # Set window title
         self.set_default_size(600, 100)
         self.show() # Show window.
+        self.connect("destroy", self.on_destroy)
     
         self.increment_value = 0 # Initialize increment value variable to be used in the breathing animation later. 
 
@@ -98,41 +137,43 @@ class Breathing(Gtk.ApplicationWindow):
 
         self.breathing_direction = Gtk.Label() # Create a blank label to show the breathing instructions.
         self.breathing_direction.set_markup("<span font_desc='Lato Light 25'>%s</span>" % "Sit upright somewhere comfortable") # Show the instructions in size 25 font.
-
         listbox.add(self.breathing_direction) # Add the breathing instructions text to the listbox.
 
         self.show_all() # Show all elements in the user interface.
 
         def StartBreathing(): # Called when the guided breathing starts.
-            self.start_time = int(datetime.timestamp(datetime.now())) # Save the time when the breathing exercise started to a variable.
+            self.start_time = int(time.time()) # Save the time when the breathing exercise started to a variable.
             self.timeout_id = GLib.timeout_add(5, self.Animation, None)
 
         def StopBreathing(): # Called to stop the breathing exercise.
-            end_time = int(datetime.timestamp(datetime.now())) # Save the time when the breathing exercise stopped to a variable.
+            end_time = int(time.time()) # Save the time when the breathing exercise stopped to a variable.
             GLib.source_remove(self.timeout_id) # Stop the breathing progress bar animation started by StartBreathing()
-            self.breathing_direction.set_markup("<span font_desc='Lato Light 40'>%s</span>" % "Good job!") # Display "Good job" message
             self.breathing_bar.set_fraction(0) # Set progress bar to 0. 
             
-            if (use_healthbox == True):
+            if (config["healthbox"]["enabled"] == True):
+                submission = "?service=" + config["healthbox"]["service_key"] + "&category=mental&metric=mindful_minutes&key-type_of_mindfulness=breathing&key-start_time=" + str(self.start_time) + "&key-end_time=" + str(end_time)
+                full_url = config["healthbox"]["endpoint"] + submission
+                response = requests.get(full_url)
+                try:
+                    response = json.loads(response.text) # Convert the response to JSON.
+                    print(response)
+                except Exception as e:
+                    print("JSON decode error: " + str(e))
+                    self.breathing_direction.set_markup("<span font_desc='Lato Light 40'>%s</span>" % "Internal HealthBox error")
+                if ("error" in response):
+                    self.breathing_direction.set_markup("<span font_desc='Lato Light 40'>%s</span>" % "HealthBox error")
+                elif ("success" in response):
+                    self.breathing_direction.set_markup("<span font_desc='Lato Light 40'>%s</span>" % "Exercise complete")
+                    print("HealthBox success: " + str(response))
+                else:
+                    self.breathing_direction.set_markup("<span font_desc='Lato Light 40'>%s</span>" % "Unknown HealthBox error")
+            else:
+                self.breathing_direction.set_markup("<span font_desc='Lato Light 40'>%s</span>" % "Exercise complete!")
 
-                if (healthbox_server == ""): # Check to see if the user has entered a server address and port. If not, display an error.
-                    print("Error: You've configured Breathe to use HealthBox, but you haven't entered the server address of your HealthBox instance. Please do so in the configuration at the top of 'main.py'.")
-
-                elif (healthbox_apikey == ""): # Check to see if the user has entered an API key. If not, display an error.
-                    print("Error: You've configured Breathe to use HealthBox, but you haven't entered an API key for Breathe to use. Please do so in the configuration at the top of 'main.py'.")
-
-                else: # If the user has entered an API key and server address, attempt to submit the breathing session to HealthBox.
-
-                    # Generate the submission data as plain text JSON data.
-                    submission = '{"timestamp": ' + str(end_time) + ', "data": {"type_of_mindfulness": "Breathing", "start_time": ' + str(self.start_time) + ', "end_time": ' + str(end_time) + '}}'
-
-                    # Form and send the network request that will be used to submit the information to HealthBox using the make_request function.
-                    response = make_request (server = healthbox_server, submission = submission, api_key = healthbox_apikey, print_url = url_debugging)
-
-
-
-        threading.Timer(6.0, StartBreathing).start() # Start the breathing exercises 6 seconds after the window has opened, giving the user time to read the instructions.
-        threading.Timer(67.0, StopBreathing).start() # Stop breathing exercises after 67 seconds (62 seconds of breathing plus the 5 second timer above).
+        self.start_timer = threading.Timer(6.0, StartBreathing) # Start the breathing exercises 6 seconds after the window has opened, giving the user time to read the instructions.
+        self.end_timer = threading.Timer(config["exercise"]["time"] + 6.0, StopBreathing)
+        self.start_timer.start()
+        self.end_timer.start()
 
     def Animation(self, user_data):
         current_value = self.breathing_bar.get_fraction() # Define current_value as the current progress of the progress bar (0.0 through 1.0)
@@ -146,12 +187,16 @@ class Breathing(Gtk.ApplicationWindow):
             self.breathing_direction.set_markup("<span font_desc='Lato Light 40'>%s</span>" % "Breathe out")
 
         if current_value < 0.5:
-            self.increment_value = self.increment_value + 0.000006 # Exponentially speed up until the progress bar passes 50%
+            self.increment_value = self.increment_value + 0.000006 * config["exercise"]["speed"] # Bounce off of the bottom of the progress bar (accelerate upwards).
         elif current_value >= 0.5:
-            self.increment_value = self.increment_value - 0.000006 # Exponentially slow down until the progress bar reaches ~100%, the begin decreasing exponentially
+            self.increment_value = self.increment_value - 0.000006 * config["exercise"]["speed"] # Bounce off of the top of the progress bar (accelerate downwards).
 
         self.breathing_bar.set_fraction(current_value + self.increment_value) # Apply changes to the breathing progress bar. 
         return True
+
+    def on_destroy(self, widget): # This runs when this window is closed.
+        self.start_timer.cancel() # Cancel the exercise start trigger.
+        self.end_timer.cancel() # Cancel the exercise end trigger.
 
 
 class MyApplication(Gtk.Application):
