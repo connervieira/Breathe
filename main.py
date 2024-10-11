@@ -13,6 +13,7 @@ import sys
 import time
 import requests
 import json
+import validators
 
 
 default_config = {
@@ -27,7 +28,7 @@ default_config = {
     }
 }
 
-config_file = os.path.join(os.path.expanduser("~"), ".config/V0LTBreathe/config.json")
+config_file = os.path.join(os.path.expanduser("~"), ".config/V0LT/Breathe/config.json")
 config_directory = os.path.dirname(config_file) # Get the directory of the configuration file.
 if (os.path.isdir(config_directory) == False): # Check to see if the configuration directory does not yet exist.
     os.makedirs(config_directory)
@@ -42,6 +43,16 @@ if (os.path.isfile(config_file) == True): # Check to make sure the config file e
         config = json.load(f)
 
 temp_config = config # temp_config holds the configuration temporarily during editing.
+
+
+# This function checks to see if a string contains only the allowed characters. If other characters are present, it returns 'False'.
+def contains_only(string, allowed=[]):
+    for letter in string:
+        if (letter in allowed): # Check to see if this character is in the list of allowed characters.
+            continue # Continue to the next character.
+        else: # Otherwise, this character is not allowed.
+            return False; # Return false.
+    return True
 
 
 class Main(Gtk.ApplicationWindow): # This is the class for the main application window. This is the first window shown when launching the application. 
@@ -69,20 +80,34 @@ class Main(Gtk.ApplicationWindow): # This is the class for the main application 
 class Configuration(Gtk.ApplicationWindow):
     def CheckToggled_HealthBoxEnabled(self, switch, data):
         temp_config["healthbox"]["enabled"] = switch.get_active()
+        self.submit_button.set_label("Submit")
     def EntryChanged_HealthBoxEndpoint(self, entry):
         temp_config["healthbox"]["endpoint"] = entry.get_text()
+        self.submit_button.set_label("Submit")
     def EntryChanged_HealthBoxService(self, entry):
         temp_config["healthbox"]["service_key"] = entry.get_text()
+        self.submit_button.set_label("Submit")
     def SliderChanged_ExerciseTime(self, slider):
         temp_config["exercise"]["time"] = float(slider.get_value())
+        self.submit_button.set_label("Submit")
     def SliderChanged_ExerciseSpeed(self, slider):
         temp_config["exercise"]["speed"] = float(slider.get_value())
+        self.submit_button.set_label("Submit")
     def __init__(self):
         def SubmitConfiguration(self):
-            # TODO: Validate input.
-            with open(config_file, 'w', encoding='utf-8') as f:
-                json.dump(temp_config, f, ensure_ascii=False, indent=4)
-            print("Saved configuration")
+            if (validators.url(temp_config["healthbox"]["endpoint"]) == False): # Check to see if the endpoint is not a valid URL.
+                self.set("<span size=\"xx-large\">Invalid HealthBox endpoint</span>")
+                self.set_label("Endpoint must be valid URL")
+            elif (temp_config["healthbox"]["endpoint"][-len("submit.php"):] != "submit.php"): # Check to see if the given endpoint doesn't end with 'submit.php'.
+                self.set_label("Endpoint must end with 'submit.php'")
+            elif (contains_only(temp_config["healthbox"]["service_key"], ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f"]) == False):
+                self.set_label("Service key can only contain 0-9 and a-f")
+            else: # Otherwise, the input is considered valid.
+                config = temp_config # Copy the temporary config to the active config.
+                with open(config_file, 'w', encoding='utf-8') as f:
+                    json.dump(config, f, ensure_ascii=False, indent=4)
+                print("Saved configuration")
+                self.set_label("Success")
 
         # Create window
         Gtk.Window.__init__(self, title="Configuration") # Set window title
@@ -90,9 +115,19 @@ class Configuration(Gtk.ApplicationWindow):
         self.set_resizable(False)
         self.show() # Show window.
 
-        vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
         self.add(vbox)
 
+
+        hbox = Gtk.Box(spacing=6)
+        self.descriptive_label = Gtk.Label()
+        self.descriptive_label.set_text("Update configuration")
+        self.descriptive_label.set_markup("<span size=\"xx-large\">Update configuration</span>")
+        hbox.pack_start(self.descriptive_label, True, True, 0)
+        vbox.pack_start(hbox, True, True, 0)
+
+        separator = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
+        vbox.pack_start(separator, True, True, 0)
 
         hbox = Gtk.Box(spacing=6)
         self.label_healthbox_enabled = Gtk.Label()
