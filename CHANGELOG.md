@@ -1,31 +1,21 @@
 # Breathe Changelog
 
-
 ## Version 1.0
-
-### Initial version
 
 - Basic functionality
 
-
 ## Version 2.0
 
-### HealthBox Support
-
 - Full support for HealthBox 'Mindful Minutes' metric
-
-### Subtle Improvements
-
 - Slightly adjusted timing
 - Better code comments
 
-
 ## Version 3.0
 
-### Modern HealthBox Support
+October 12th, 2024
 
+- Removed some unnecessary dependencies.
 - Moved to support modern HealthBox (in place of HealthBox Legacy).
-
-### Updated Configuration
-
 - Moved to a graphical configuration interface.
+    - The configuration is now stored as a file at `~/.config/V0LT/Breathe/config.json`.
+    - The configuration is managed through the application interface, rather than the command line.
